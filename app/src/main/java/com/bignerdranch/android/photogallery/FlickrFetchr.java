@@ -3,11 +3,17 @@ package com.bignerdranch.android.photogallery;
 import android.net.Uri;
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FlickrFetchr {
     private static final String TAG = "FLICKR_FETCHR";
@@ -39,7 +45,8 @@ public class FlickrFetchr {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public void fetchItems() {
+    public List<GalleryItem> fetchItems() {
+        List<GalleryItem> items = new ArrayList<>();
         try {
             String url = Uri.parse("https://api.flickr.com/services/rest/")
                     .buildUpon()
@@ -51,8 +58,30 @@ public class FlickrFetchr {
                     .build().toString();
             String jsonString = getUrlString(url);
             Log.i(TAG, "Received JSON: " + jsonString);
+            JSONObject jsonBody = new JSONObject(jsonString);
+            parseItems(items, jsonBody);
         } catch(IOException e) {
             Log.e(TAG, "Failed to fetch items.", e);
+        } catch(JSONException e) {
+            Log.e(TAG, "Failed to parse items.", e);
+        }
+        return items;
+    }
+
+    private void parseItems(List<GalleryItem> items, JSONObject body)
+        throws JSONException, IOException {
+        JSONObject photos = body.getJSONObject("photos");
+        JSONArray photosList = photos.getJSONArray("photo");
+        for(int i = 0 ; i < photosList.length() ; i++) {
+            JSONObject photo = photosList.getJSONObject(i);
+            GalleryItem item = new GalleryItem();
+            item.setId(photo.getString("id"));
+            item.setCaption(photo.getString("title"));
+            if(!photo.has("url_s")) {
+                continue;
+            }
+            item.setUrl(photo.getString("url_s"));
+            items.add(item);
         }
     }
 }
