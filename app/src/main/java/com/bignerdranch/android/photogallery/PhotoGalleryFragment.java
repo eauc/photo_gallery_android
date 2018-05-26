@@ -11,8 +11,12 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -28,7 +32,7 @@ public class PhotoGalleryFragment extends Fragment {
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
     private List<GalleryItem> mGalleryItems = new ArrayList<>();
-    private int mCurrentFlikrPage = 0;
+    private int mCurrentFlikrPage = 1;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -38,7 +42,8 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
+        setHasOptionsMenu(true);
+        updateItems();
 
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
@@ -90,10 +95,80 @@ public class PhotoGalleryFragment extends Fragment {
         mThumbnailDownloader.clearQueue();
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final SearchView searchView = (SearchView) searchItem.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.d(TAG, "QueryTextSubmit " + query);
+                QueryPreferences.setSearchQuery(getActivity(), query);
+                resetItems();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                Log.d(TAG, "QueryTextChange " + newText);
+                return false;
+            }
+        });
+        searchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String query = QueryPreferences.getSearchQuery(getActivity());
+                searchView.setQuery(query, false);
+            }
+        });
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_clear:
+            {
+                QueryPreferences.setSearchQuery(getActivity(), null);
+                resetItems();
+                return true;
+            }
+            default:
+            {
+                return super.onOptionsItemSelected(item);
+            }
+        }
+    }
+
+    private void resetItems() {
+        mGalleryItems.clear();
+        mCurrentFlikrPage = 0;
+        updateItems();
+    }
+
+    private void updateItems() {
+        String query = QueryPreferences.getSearchQuery(getActivity());
+        new FetchItemsTask(query, mCurrentFlikrPage).execute();
+    }
+
     private class FetchItemsTask extends AsyncTask<Void,Void,List<GalleryItem>> {
+        private String mQuery;
+        private int mPage;
+
+        public FetchItemsTask(String query, int page) {
+            mQuery = query;
+            mPage = page;
+        }
+
         @Override
         protected List<GalleryItem> doInBackground(Void... params) {
-            return new FlickrFetchr().fetchItems(mCurrentFlikrPage);
+            if (mQuery == null) {
+                return new FlickrFetchr().fetchRecentPhotos(mPage);
+            } else {
+                return new FlickrFetchr().searchPhotos(mQuery, mPage);
+            }
         }
 
         @Override
@@ -114,7 +189,7 @@ public class PhotoGalleryFragment extends Fragment {
                         if (!mPhotoRecyclerView.canScrollVertically(1)) {
                             mCurrentFlikrPage++;
                             Log.i(TAG, "Load next page: " + mCurrentFlikrPage);
-                            new FetchItemsTask().execute();
+                            updateItems();
                         }
                     }
                 });
