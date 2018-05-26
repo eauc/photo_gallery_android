@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -39,8 +40,17 @@ public class PhotoGalleryFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
         mPhotoRecyclerView = (RecyclerView)v.findViewById(R.id.photo_recycler_view);
-        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
-
+        final GridLayoutManager layoutManager = new GridLayoutManager(getActivity(), 3);
+        mPhotoRecyclerView.setLayoutManager(layoutManager);
+        mPhotoRecyclerView.getViewTreeObserver()
+            .addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    Integer nCols = mPhotoRecyclerView.getWidth() / 240;
+                    Log.i(TAG, "Change layout nCols: " + nCols);
+                    layoutManager.setSpanCount(nCols);
+                }
+            });
         setupAdapter();
 
         return v;
@@ -55,29 +65,25 @@ public class PhotoGalleryFragment extends Fragment {
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
             mGalleryItems.addAll(galleryItems);
-            setupAdapter();
+            mPhotoAdapter.setGalleryItems(mGalleryItems);
         }
     }
 
     private void setupAdapter() {
         if(isAdded()) {
-            if(mPhotoAdapter == null) {
-                mPhotoAdapter = new PhotoAdapter(mGalleryItems);
-                mPhotoRecyclerView.setAdapter(mPhotoAdapter);
-                if (Build.VERSION.SDK_INT >= 23) {
-                    mPhotoRecyclerView.setOnScrollChangeListener(new RecyclerView.OnScrollChangeListener() {
-                        @Override
-                        public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
-                            if (!mPhotoRecyclerView.canScrollVertically(1)) {
-                                mCurrentFlikrPage++;
-                                Log.i(TAG, "Load next page: " + mCurrentFlikrPage);
-                                new FetchItemsTask().execute();
-                            }
+            mPhotoAdapter = new PhotoAdapter(mGalleryItems);
+            mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+            if (Build.VERSION.SDK_INT >= 23) {
+                mPhotoRecyclerView.setOnScrollChangeListener(new RecyclerView.OnScrollChangeListener() {
+                    @Override
+                    public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                        if (!mPhotoRecyclerView.canScrollVertically(1)) {
+                            mCurrentFlikrPage++;
+                            Log.i(TAG, "Load next page: " + mCurrentFlikrPage);
+                            new FetchItemsTask().execute();
                         }
-                    });
-                }
-            } else {
-                mPhotoAdapter.setGalleryItems(mGalleryItems);
+                    }
+                });
             }
         }
     }
