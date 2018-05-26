@@ -3,9 +3,7 @@ package com.bignerdranch.android.photogallery;
 import android.net.Uri;
 import android.util.Log;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.Gson;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -58,30 +56,41 @@ public class FlickrFetchr {
                     .build().toString();
             String jsonString = getUrlString(url);
             Log.i(TAG, "Received JSON: " + jsonString);
-            JSONObject jsonBody = new JSONObject(jsonString);
-            parseItems(items, jsonBody);
+            parseItems(items, jsonString);
         } catch(IOException e) {
             Log.e(TAG, "Failed to fetch items.", e);
-        } catch(JSONException e) {
-            Log.e(TAG, "Failed to parse items.", e);
         }
         return items;
     }
 
-    private void parseItems(List<GalleryItem> items, JSONObject body)
-        throws JSONException, IOException {
-        JSONObject photos = body.getJSONObject("photos");
-        JSONArray photosList = photos.getJSONArray("photo");
-        for(int i = 0 ; i < photosList.length() ; i++) {
-            JSONObject photo = photosList.getJSONObject(i);
-            GalleryItem item = new GalleryItem();
-            item.setId(photo.getString("id"));
-            item.setCaption(photo.getString("title"));
-            if(!photo.has("url_s")) {
+    private void parseItems(List<GalleryItem> items, String body) {
+        Gson gson = new Gson();
+        Flikr flikr = gson.fromJson(body, Flikr.class);
+        for (int i = 0 ; i < flikr.photos.photo.size() ; i++) {
+            Photo photo = flikr.photos.photo.get(i);
+            if (photo.url_s == "") {
                 continue;
             }
-            item.setUrl(photo.getString("url_s"));
+            GalleryItem item = new GalleryItem();
+            item.setId(photo.id);
+            item.setCaption(photo.title);
+            item.setUrl(photo.url_s);
             items.add(item);
         }
+    }
+
+    private class Flikr {
+        public Photos photos;
+    }
+
+    private class Photos {
+        public List<Photo> photo;
+        public int page;
+    }
+
+    private class Photo {
+        public String title;
+        public String id;
+        public String url_s;
     }
 }
