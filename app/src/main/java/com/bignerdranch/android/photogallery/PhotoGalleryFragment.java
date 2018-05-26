@@ -1,8 +1,8 @@
 package com.bignerdranch.android.photogallery;
 
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
@@ -13,14 +13,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = "PhotoGalleryFragment";
     private RecyclerView mPhotoRecyclerView;
+    private PhotoAdapter mPhotoAdapter;
     private List<GalleryItem> mGalleryItems = new ArrayList<>();
+    private int mCurrentFlikrPage = 0;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -48,19 +49,36 @@ public class PhotoGalleryFragment extends Fragment {
     private class FetchItemsTask extends AsyncTask<Void,Void,List<GalleryItem>> {
         @Override
         protected List<GalleryItem> doInBackground(Void... params) {
-            return new FlickrFetchr().fetchItems();
+            return new FlickrFetchr().fetchItems(mCurrentFlikrPage);
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
-            mGalleryItems = galleryItems;
+            mGalleryItems.addAll(galleryItems);
             setupAdapter();
         }
     }
 
     private void setupAdapter() {
         if(isAdded()) {
-            mPhotoRecyclerView.setAdapter(new PhotoAdapter(mGalleryItems));
+            if(mPhotoAdapter == null) {
+                mPhotoAdapter = new PhotoAdapter(mGalleryItems);
+                mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+                if (Build.VERSION.SDK_INT >= 23) {
+                    mPhotoRecyclerView.setOnScrollChangeListener(new RecyclerView.OnScrollChangeListener() {
+                        @Override
+                        public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                            if (!mPhotoRecyclerView.canScrollVertically(1)) {
+                                mCurrentFlikrPage++;
+                                Log.i(TAG, "Load next page: " + mCurrentFlikrPage);
+                                new FetchItemsTask().execute();
+                            }
+                        }
+                    });
+                }
+            } else {
+                mPhotoAdapter.setGalleryItems(mGalleryItems);
+            }
         }
     }
 
@@ -82,6 +100,11 @@ public class PhotoGalleryFragment extends Fragment {
 
         public PhotoAdapter(List<GalleryItem> items) {
             mGalleryItems = items;
+        }
+
+        public void setGalleryItems(List<GalleryItem> galleryItems) {
+            mGalleryItems = galleryItems;
+            notifyDataSetChanged();
         }
 
         @Override
