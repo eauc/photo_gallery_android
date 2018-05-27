@@ -1,5 +1,6 @@
 package com.bignerdranch.android.photogallery;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -100,6 +101,13 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
 
+        MenuItem pollItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (PollService.isServiceAlarmOn(getActivity())) {
+            pollItem.setTitle(R.string.stop_polling);
+        } else {
+            pollItem.setTitle(R.string.start_polling);
+        }
+
         MenuItem searchItem = menu.findItem(R.id.menu_item_search);
         final SearchView searchView = (SearchView) searchItem.getActionView();
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -133,6 +141,17 @@ public class PhotoGalleryFragment extends Fragment {
             {
                 QueryPreferences.setSearchQuery(getActivity(), null);
                 resetItems();
+                return true;
+            }
+            case R.id.menu_item_toggle_polling:
+            {
+                if (PollService.isServiceAlarmOn(getActivity())) {
+                    PollService.setServiceAlarm(getActivity(), false);
+                    item.setTitle(R.string.start_polling);
+                } else {
+                    PollService.setServiceAlarm(getActivity(), true);
+                    item.setTitle(R.string.stop_polling);
+                }
                 return true;
             }
             default:
