@@ -23,6 +23,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".PhotoPageActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
         <service android:name=".PollService" />
         <receiver android:name=".StartupReceiver">
             <intent-filter>
@@ -31,9 +33,9 @@
         </receiver>
         <receiver android:name=".NotificationReceiver"
             android:exported="false">
-            <intent-filter android:priority="-999">
+            <intent-filter android:priority="-1">
                 <action
-                    android:name="com.bignerdranch.android.photogallery.SHOW_NOTIFICATION" />
+                    android:name="com.bignerdranch.android.photo_gallery.SHOW_NOTIFICATION" />
             </intent-filter>
         </receiver>
     </application>

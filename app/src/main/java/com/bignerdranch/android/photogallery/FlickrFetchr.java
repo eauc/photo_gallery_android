@@ -106,6 +106,7 @@ public class FlickrFetchr {
             item.setId(photo.id);
             item.setCaption(photo.title);
             item.setUrl(photo.url_s);
+            item.setOwner(photo.owner);
             items.add(item);
         }
     }
@@ -123,5 +124,6 @@ public class FlickrFetchr {
         public String title;
         public String id;
         public String url_s;
+        public String owner;
     }
 }
